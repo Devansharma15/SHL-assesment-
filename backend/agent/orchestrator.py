@@ -325,7 +325,9 @@ class AgentOrchestrator:
             return final_response
 
         except Exception as e:
+            import traceback
             logger.error("Agent orchestrator failed: %s", e, exc_info=True)
+            traceback.print_exc()
             return ResponseFormatter.create_refusal(
                 message="I encountered an unexpected error while processing your request. Please try again."
             )

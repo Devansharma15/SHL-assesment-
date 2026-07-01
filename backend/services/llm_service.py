@@ -6,6 +6,7 @@ import asyncio
 import importlib
 import json
 import logging
+import traceback
 import re
 from typing import Any
 
@@ -34,7 +35,8 @@ class LLMService:
                     model_name=settings.llm_model,
                 )
             except Exception as e:
-                logger.warning("Failed to initialize Gemini client: %s", e)
+                logger.error("Failed to initialize Gemini client: %s", e)
+                traceback.print_exc()
                 self.model = None
         else:
             self.model = None
@@ -58,7 +60,8 @@ class LLMService:
         try:
             raw_text = await self._call_gemini(system_prompt, messages)
         except Exception as e:
-            logger.warning("Gemini provider failed: %s", e)
+            logger.error("Gemini provider failed: %s", e)
+            traceback.print_exc()
 
         if not raw_text:
             return self._get_fallback_response()

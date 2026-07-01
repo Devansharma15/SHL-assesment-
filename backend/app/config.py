@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # --- LLM Provider ---
     llm_provider: str = "gemini"
-    llm_model: str = "gemini-1.5-pro"
+    llm_model: str = "gemini-2.5-flash"
     gemini_api_key: str = ""
 
     # --- LLM Generation ---
