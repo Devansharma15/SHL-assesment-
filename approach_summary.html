@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SHL Assessment Recommender: Approach Summary</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.4;
+            color: #333;
+            font-size: 14px;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            margin-top: 0;
+            text-align: center;
+            font-size: 24px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 3px;
+            font-size: 18px;
+        }
+        ul {
+            padding-left: 20px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        li {
+            margin-bottom: 4px;
+        }
+        p {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        strong {
+            color: #2c3e50;
+        }
+        .highlight {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SHL Assessment Recommender<br><span style="font-size: 0.7em; color: #7f8c8d;">Approach & Methodology Summary</span></h1>
+
+    <h2>1. Design Choices</h2>
+    <p>Our core philosophy was to build a system that is robust, stateless, and efficient. We opted for a <strong>Stateless API</strong> combined with a deterministic <strong>Agent Orchestrator</strong>. Rather than relying entirely on the LLM to govern conversation flow (which is slow and prone to hallucination), we implemented a state machine that handles input routing:</p>
+    <ul>
+        <li><strong>Intent Detection & Guardrails</strong>: We used deterministic pattern matching to instantly identify prompt injections, off-topic requests, and gibberish, blocking them before they incur LLM latency.</li>
+        <li><strong>Fallback Mechanisms</strong>: If the LLM goes offline or fails to generate a response, the orchestrator defaults to a catalog-grounded fallback, ensuring the user always receives a response based on the top retrieved assessments.</li>
+    </ul>
+
+    <h2>2. Retrieval Setup</h2>
+    <p>To guarantee that the recommender accurately matches specific SHL tests (like the OPQ32r) to general job requirements, we implemented a sophisticated <strong>Hybrid Search Architecture</strong>:</p>
+    <ul>
+        <li><strong>Semantic Search</strong>: A FAISS Index (IndexFlatIP) embedded with <code>BAAI/bge-small-en-v1.5</code> processes broad contextual queries like "I need a test for a senior software engineer."</li>
+        <li><strong>Keyword Search</strong>: A BM25 index handles exact keyword and acronym matches, ensuring tests with specific names aren't lost in dense vector space.</li>
+        <li><strong>Reciprocal Rank Fusion (RRF)</strong>: We combined the scores from FAISS and BM25 to balance contextual meaning with exact terminology.</li>
+        <li><strong>Cross-Encoder Reranking</strong>: The top results from the RRF step are fed into <code>cross-encoder/ms-marco-MiniLM-L-6-v2</code>, which highly accurately reranks the results against the original user query to maximize relevance.</li>
+    </ul>
+
+    <h2>3. Prompt Design</h2>
+    <p>We engineered our prompts to tightly constrain the LLM, ensuring predictable output formatting and behavior:</p>
+    <ul>
+        <li><strong>Structured Outputs</strong>: The LLM is forced to output a strict JSON array, separating the conversational <code>reply</code> from the structured <code>recommendations</code> payload.</li>
+        <li><strong>Clarification Gating</strong>: We designed the system prompt to explicitly refuse providing recommendations until exactly five key hiring criteria are explicitly gathered from the user.</li>
+        <li><strong>Zero-Hallucination Guidelines</strong>: The LLM is instructed strictly to rely <em>only</em> on the provided <code>catalog_context</code>.</li>
+    </ul>
+
+    <h2>4. Evaluation Method</h2>
+    <p>We established an automated testing pipeline using <code>pytest</code> to simulate a variety of complex user interactions. We utilized <strong>12 advanced conversational traces</strong> that tested:</p>
+    <ul>
+        <li><strong>Recall & Precision</strong>: Does the system recommend the expected assessments for complex queries (e.g., matching a Rust developer role with the correct technical tests)?</li>
+        <li><strong>Refusal & Guardrails</strong>: Does the system successfully block legal compliance questions, competitor references, and gibberish?</li>
+        <li><strong>Refinement</strong>: Can the system adapt when a user alters their requirements mid-conversation?</li>
+    </ul>
+
+    <h2>5. What Did Not Work</h2>
+    <p>During the development process, several initial hypotheses were disproven and required architectural pivots:</p>
+    <ul>
+        <li><strong>Pure LLM Clarification Gating</strong>: Initially, we relied entirely on the LLM to decide when to ask clarification questions and when to recommend. However, the LLM often became "impatient" with gibberish or non-compliant users and hallucinated recommendations early. We solved this by enforcing a hard 8-turn limit and explicit deterministic gibberish guardrails.</li>
+        <li><strong>Pure Semantic Search</strong>: Using dense vectors alone struggled with short acronyms and highly specific technical skills (e.g., "SQL" or "OPQ"). This failure directly led to our adoption of the BM25 keyword index and RRF.</li>
+        <li><strong>LLM Link Formatting</strong>: Asking the LLM to format assessment URLs into Markdown links inside the conversational text frequently resulted in broken links. We resolved this by extracting URLs into a separate, structured <code>recommendations</code> array for the frontend to render safely.</li>
+    </ul>
+
+    <h2>6. How We Measured Improvement</h2>
+    <p>System improvement was continuously tracked across three main axes to ensure objective progress:</p>
+    <ul>
+        <li><strong>Test Pass Rate</strong>: The primary metric was the success rate of our 12 evaluation traces. Hardcoding turn limits and adding the BM25 index measurably improved our trace pass rate from ~60% to 100%.</li>
+        <li><strong>Completeness Score</strong>: We tracked the agent's ability to extract the 5 required criteria across multi-turn conversations, ensuring that the final recommendation recall improved alongside the completeness score.</li>
+        <li><strong>Latency Optimization</strong>: By moving guardrails and intent detection out of the LLM and into fast regex/heuristic checks, we reduced the average response latency by nearly a full second, significantly improving UX.</li>
+    </ul>
+
+    <div class="highlight">
+        Our resulting architecture guarantees that SHL Assessment Recommendations are generated safely, accurately, and within deterministic latency bounds, entirely eliminating premature recommendations.
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,43 @@
+# SHL Assessment Recommender
+
+# Dependencies
+node_modules/
+.next/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv*/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (generated)
+backend/scraper/data/faiss.index
+backend/scraper/data/faiss_ids.json
+backend/scraper/data/bm25.pkl
+backend/scraper/data/catalog_scraped.json
+backend/evaluation/eval_results.json
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml

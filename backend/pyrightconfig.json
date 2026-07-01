@@ -1,0 +1,7 @@
+{
+  "include": ["."],
+  "venvPath": "c:\\Users\\devan\\.gemini\\antigravity-ide\\scratch\\shl-assessment-recommender\\backend",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "exclude": [".venv", "venv312", "scraper", "**/__pycache__"]
+}

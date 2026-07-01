@@ -1,0 +1,21 @@
+{
+  "include": ["backend"],
+  "venvPath": "c:\\Users\\devan\\.gemini\\antigravity-ide\\scratch\\shl-assessment-recommender\\backend",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "extraPaths": ["backend"],
+  "exclude": [
+    "backend/.venv",
+    "backend/venv312",
+    "backend/scraper",
+    "frontend",
+    "**/node_modules",
+    "**/__pycache__"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "extraPaths": ["backend"]
+    }
+  ]
+}
