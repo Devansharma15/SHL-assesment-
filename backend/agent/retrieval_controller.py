@@ -35,14 +35,20 @@ class RetrievalController:
     """Controls when and how to retrieve from vector stores."""
 
     @classmethod
-    def should_retrieve(cls, intent: AgentIntent) -> bool:
-        """Determine if retrieval is needed based on intent."""
-        # We only retrieve when we need to recommend, refine, or compare
-        return intent in {
-            AgentIntent.RECOMMENDATION,
-            AgentIntent.REFINEMENT,
-            AgentIntent.COMPARISON,
-        }
+    def should_retrieve(cls, intent: AgentIntent, state: ConversationState) -> bool:
+        """Determine if retrieval is needed based on intent and state."""
+        # Never retrieve on the first message to force clarification
+        if state.is_first_message:
+            return False
+
+        if intent in {AgentIntent.REFINEMENT, AgentIntent.COMPARISON}:
+            return True
+
+        if intent == AgentIntent.RECOMMENDATION:
+            # Only retrieve when we have enough context
+            return state.recommendation_readiness >= 0.4
+            
+        return False
 
     @classmethod
     def build_retrieval_query(cls, intent: AgentIntent, state: ConversationState, latest_message: str) -> str:

@@ -249,7 +249,7 @@ class AgentOrchestrator:
             
             latest_msg = messages[-1]["content"] if messages else ""
 
-            if RetrievalController.should_retrieve(intent):
+            if RetrievalController.should_retrieve(intent, state):
                 query = RetrievalController.build_retrieval_query(intent, state, latest_msg)
                 
                 # Hybrid Search
