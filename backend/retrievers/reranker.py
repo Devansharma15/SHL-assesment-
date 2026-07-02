@@ -16,7 +16,7 @@ class CrossEncoderReranker:
     similarity scores at the cost of being slower (hence used on top-K results only).
     """
 
-    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-TinyBERT-L-2-v2"):
         self.model_name = model_name
         self._model = None
 
@@ -46,6 +46,7 @@ class CrossEncoderReranker:
         query: str,
         candidates: list[dict],
         top_k: int = 10,
+        max_candidates: int = 10,
     ) -> list[dict]:
         """Rerank candidates using the cross-encoder.
 
@@ -53,6 +54,7 @@ class CrossEncoderReranker:
             query: The original search query.
             candidates: List of candidate dicts with 'assessment' key.
             top_k: Number of top results to return after reranking.
+            max_candidates: Maximum number of top candidates to evaluate (to save time).
 
         Returns:
             Reranked list of dicts with 'assessment' and updated 'score'.
@@ -60,27 +62,30 @@ class CrossEncoderReranker:
         if not candidates:
             return []
 
+        # Only rerank the top candidates to stay within time budget
+        candidates_to_rerank = candidates[:max_candidates]
+
         # Build (query, document) pairs
-        pairs = [(query, self._build_document_text(c["assessment"])) for c in candidates]
+        pairs = [(query, self._build_document_text(c["assessment"])) for c in candidates_to_rerank]
 
         # Score all pairs
         try:
-            scores = self.model.predict(pairs)
+            scores = self.model.predict(pairs, show_progress_bar=False)  # type: ignore[arg-type]
         except Exception as e:
             logger.error("Cross-encoder reranking failed: %s", e)
             # Fallback: return original order
             return candidates[:top_k]
 
         # Attach scores and sort
-        for candidate, score in zip(candidates, scores):
+        for candidate, score in zip(candidates_to_rerank, scores):
             candidate["rerank_score"] = float(score)
 
-        reranked = sorted(candidates, key=lambda c: -c["rerank_score"])
+        reranked = sorted(candidates_to_rerank, key=lambda c: -c["rerank_score"])
 
         return reranked[:top_k]
 
 
 @lru_cache(maxsize=1)
-def get_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> CrossEncoderReranker:
+def get_reranker(model_name: str = "cross-encoder/ms-marco-TinyBERT-L-2-v2") -> CrossEncoderReranker:
     """Get or create the singleton reranker."""
     return CrossEncoderReranker(model_name=model_name)
